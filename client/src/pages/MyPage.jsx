@@ -1,8 +1,11 @@
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
 function MyPage() {
+    const navigate = useNavigate();
+
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState({});
     const [sessions, setSessions] = useState([]);
@@ -26,6 +29,9 @@ function MyPage() {
         booking_start: '',
         poster: null
     });
+
+    const [deletingAccount, setDeletingAccount] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
 
     const getDate = (value) => {
         if (!value) return '';
@@ -123,6 +129,37 @@ function MyPage() {
         }
     };
 
+    // 회원탈퇴
+    const deleteAccount = async (e) => {
+        e.preventDefault();
+
+        const confirmed = window.confirm(
+            '정말 회원탈퇴를 진행할까요?\n회원정보와 관련 기록이 삭제되며 복구할 수 없습니다.'
+        );
+
+        if (!confirmed) return;
+
+        try {
+            await api.delete('/users/me', {
+                data: {
+                    password: deletePassword
+                }
+            });
+
+            alert('회원탈퇴가 완료되었습니다.');
+
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+
+            sessionStorage.removeItem('token');
+
+            navigate('/');
+
+        } catch (err) {
+            alert(err.response?.data?.message || '회원탈퇴에 실패했습니다.');
+        }
+    };
+
     const startEditEvent = (event) => {
         setEditingEvent(event.event_id);
 
@@ -145,7 +182,6 @@ function MyPage() {
         });
     };
 
-    
     const updateEvent = async (e) => {
         e.preventDefault();
 
@@ -157,28 +193,26 @@ function MyPage() {
             }
         });
 
-    // 기존 카테고리를 그대로 전송
-    const currentEvent = events.find(
-        (event) => event.event_id === editingEvent
-    );
+        const currentEvent = events.find(
+            (event) => event.event_id === editingEvent
+        );
 
-    if (currentEvent) {
-        formData.append('category', currentEvent.category);
-    }
+        if (currentEvent) {
+            formData.append('category', currentEvent.category);
+        }
 
-    try {
-        await api.put(`/events/${editingEvent}`, formData);
+        try {
+            await api.put(`/events/${editingEvent}`, formData);
 
-        alert('행사가 수정되었습니다.');
-        setEditingEvent(null);
-        loadData();
+            alert('행사가 수정되었습니다.');
+            setEditingEvent(null);
+            loadData();
 
-    } catch (err) {
-        console.error(err);
-        alert(err.response?.data?.message || '행사 수정에 실패했습니다.');
-    }
+        } catch (err) {
+            console.error(err);
+            alert(err.response?.data?.message || '행사 수정에 실패했습니다.');
+        }
     };
-
 
     const deleteEvent = async (event) => {
         const confirmed = window.confirm(
@@ -265,6 +299,19 @@ function MyPage() {
                         </div>
                     </div>
                 )}
+
+                <div style={{ marginTop: '25px', textAlign: 'right' }}>
+                    <button
+                        type="button"
+                        className="mypage-delete-button"
+                        onClick={() => {
+                            setDeletePassword('');
+                            setDeletingAccount(true);
+                        }}
+                    >
+                        회원탈퇴
+                    </button>
+                </div>
             </section>
 
             {/* 연습 통계 */}
@@ -396,8 +443,6 @@ function MyPage() {
                             required
                         />
 
-                        
-
                         <label>장소</label>
                         <input
                             name="location"
@@ -452,6 +497,45 @@ function MyPage() {
                                 className="mypage-primary-button"
                             >
                                 수정 저장
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* 회원탈퇴 */}
+            {deletingAccount && (
+                <div className="mypage-modal-background">
+                    <form className="mypage-event-form" onSubmit={deleteAccount}>
+                        <h2>회원탈퇴</h2>
+
+                        <p>
+                            탈퇴하면 회원정보와 관련 기록이 삭제됩니다.
+                        </p>
+
+                        <label>비밀번호 확인</label>
+                        <input
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="현재 비밀번호 입력"
+                            required
+                        />
+
+                        <div className="mypage-form-buttons">
+                            <button
+                                type="button"
+                                className="mypage-cancel-button"
+                                onClick={() => setDeletingAccount(false)}
+                            >
+                                취소
+                            </button>
+
+                            <button
+                                type="submit"
+                                className="mypage-delete-button"
+                            >
+                                탈퇴하기
                             </button>
                         </div>
                     </form>
